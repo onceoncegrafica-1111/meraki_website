@@ -4,8 +4,8 @@
 
 const CONFIG = {
     WHATSAPP_NUMBER: "5493757525802",
-    GITHUB_OWNER: "linkuniversal",
-    GITHUB_REPO: "meraki_web",
+    GITHUB_OWNER: "onceoncegrafica-1111",
+    GITHUB_REPO: "meraki_website",
     GITHUB_BRANCH: "main",
 
     GOOGLE_SHEETS_CSV_URL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSCgumzTKh4vjuCvuVdCPvgAyZyg_yYtaatwPvlJGbzpjz96tokUttkgTSE5_oHc0weHP3dEEyDwoj5/pub?gid=0&single=true&output=csv",
