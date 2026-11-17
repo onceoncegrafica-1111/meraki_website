@@ -1,5 +1,5 @@
 /* ==========================================================================
-   MERAKI · MOTOR DE CATÁLOGO (CON PARSER DE CONJUNTOS, COLORES Y TALLES)
+   MERAKI · MOTOR DE CATÁLOGO (ESTILO BOUTIQUE INTERNACIONAL)
    ========================================================================== */
 
 const CONFIG = {
@@ -11,7 +11,7 @@ const CONFIG = {
     GOOGLE_SHEETS_CSV_URL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSCgumzTKh4vjuCvuVdCPvgAyZyg_yYtaatwPvlJGbzpjz96tokUttkgTSE5_oHc0weHP3dEEyDwoj5/pub?gid=0&single=true&output=csv",
     APPS_SCRIPT_URL: "",
 
-    CACHE_KEY: "meraki_sheets_cache_v4",
+    CACHE_KEY: "meraki_sheets_cache_v5",
     CACHE_TTL_MS: 3 * 60 * 1000,
 
     RATES: {
@@ -22,7 +22,6 @@ const CONFIG = {
 
 let PRODUCTS = [];
 
-// Diccionario de colores de indumentaria
 const COLOR_MAP = {
     "blanco": "#FFFFFF", "off white": "#F8F6F0", "manteca": "#FBF7EE",
     "natural": "#EFECE6", "crudo": "#EDE6D8", "marfil": "#FAF6EB",
@@ -73,45 +72,36 @@ function parseTalles(raw, rubro = "Indumentaria") {
     return { list: list.length ? list : ["A confirmar"], label: list.join(' · ') };
 }
 
-// Extractor automático de "(color: ...)" o "(talle: ...)" dentro del nombre
 function parseTitleAndExtractMeta(rawTitle) {
     let title = String(rawTitle || "").trim();
     let extractedColors = [];
     let extractedTalles = [];
 
-    // Busca patrones tipo: (color: beige y blanco) o Color: amarillo
     const colorMatch = title.match(/\(?color:\s*([^)]+)\)?/i);
     if (colorMatch) {
         extractedColors = parseColors(colorMatch[1]);
         title = title.replace(colorMatch[0], "").trim();
     }
 
-    // Busca patrones tipo: (talle: M) o (talle: 42/46)
     const talleMatch = title.match(/\(?talles?:\s*([^)]+)\)?/i);
     if (talleMatch) {
         extractedTalles = talleMatch[1].split(/[/,|-]+/).map(t => t.trim()).filter(Boolean);
         title = title.replace(talleMatch[0], "").trim();
     }
 
-    // Limpia paréntesis residuales vacíos o barras al final
     title = title.replace(/\(\s*\)/g, "").replace(/\s*[/–-]\s*$/, "").trim();
-
     return { cleanTitle: title, extractedColors, extractedTalles };
 }
 
 function parsePriceCell(val) {
     const str = String(val || "").trim();
     if (!str) return [0];
-
-    // Detecta precios dobles tipo "35000 / 56000" o "$35.000 / $56.000"
     if (str.includes('/')) {
-        const parts = str.split('/');
-        return parts.map(p => {
+        return str.split('/').map(p => {
             const clean = p.replace(/[.,]\d{2}$/, '').replace(/[^0-9]/g, '');
             return Number(clean) || 0;
         });
     }
-
     const clean = str.replace(/[.,]\d{2}$/, '').replace(/[^0-9]/g, '');
     return [Number(clean) || 0];
 }
@@ -120,10 +110,7 @@ function resolveAssetUrl(relPath) {
     if (!relPath) return '';
     if (relPath.startsWith('http://') || relPath.startsWith('https://')) return relPath;
     const encoded = relPath.split('/').map(seg => encodeURIComponent(seg)).join('/');
-    if (window.location.protocol === 'file:') {
-        return `https://raw.githubusercontent.com/${CONFIG.GITHUB_OWNER}/${CONFIG.GITHUB_REPO}/${CONFIG.GITHUB_BRANCH}/${encoded}`;
-    }
-    return encoded;
+    return `https://raw.githubusercontent.com/${CONFIG.GITHUB_OWNER}/${CONFIG.GITHUB_REPO}/${CONFIG.GITHUB_BRANCH}/${encoded}`;
 }
 
 function getProductPrice(item, curr = activeCurrency) {
@@ -199,16 +186,13 @@ function mapSheetRowsToProducts(rows) {
         const prices = idx.ars > -1 ? parsePriceCell(row[idx.ars]) : [0];
         const rubro = (idx.rubro > -1 && row[idx.rubro]) ? row[idx.rubro] : 'Indumentaria';
 
-        // Talles de columna o extraídos del nombre
         let finalTalles = idx.talles > -1 && row[idx.talles] ? parseTalles(row[idx.talles], rubro).list : [];
         if (extractedTalles.length > 0) finalTalles = [...new Set([...finalTalles, ...extractedTalles])];
         if (finalTalles.length === 0) finalTalles = ["A confirmar"];
 
-        // Colores de columna o extraídos del nombre
         let finalColors = idx.colores > -1 && row[idx.colores] ? parseColors(row[idx.colores]) : [];
         if (extractedColors.length > 0) finalColors = [...finalColors, ...extractedColors];
 
-        // ¿Es un conjunto / foto de 2 prendas? (ej: "Blusita / Pantalón")
         const isCombo = cleanTitle.includes('/') || prices.length > 1;
         let subItems = [];
         if (isCombo) {
