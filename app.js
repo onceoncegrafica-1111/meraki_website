@@ -1,9 +1,9 @@
 /* ==========================================================================
-   MERAKI · ENRUTADOR, MODAL CON SELECTOR DE PRENDAS/COMBOS Y WHATSAPP
+   MERAKI · MOTOR INTERACTIVO, HISTORY API (BOTÓN ATRÁS SEGURO) & WHATSAPP
    ========================================================================== */
 
 let activeCurrency = localStorage.getItem('meraki_currency') || 'ARS';
-let currentView = 'home';
+let currentView = 'home'; // 'home' | 'category'
 let activeRubro = 'Todo';
 let activeSubcat = 'Todas';
 let activeHomeSection = 'home';
@@ -11,7 +11,23 @@ let searchQuery = '';
 let shoppingBag = JSON.parse(localStorage.getItem('meraki_bag') || '[]');
 let currentPdpProduct = null;
 let currentPdpSize = 'A confirmar';
-let currentPdpComboSelection = 'all'; // Para conjuntos: 'all' | índice del ítem
+let currentPdpComboSelection = 'all';
+
+// Historial de navegación seguro para móviles (Evita que el botón "Atrás" saque de la web)
+let modalStateStack = [];
+
+function pushHistoryState(modalId) {
+    modalStateStack.push(modalId);
+    history.pushState({ modalOpen: true, modalId }, '');
+}
+
+window.addEventListener('popstate', (event) => {
+    if (modalStateStack.length > 0) {
+        event.preventDefault();
+        const topModal = modalStateStack.pop();
+        closeOverlayWithoutHistory(topModal);
+    }
+});
 
 function buildSkeletonCards(count) {
     return Array.from({ length: count }, () => `
@@ -317,9 +333,7 @@ function clearSearch() {
     navigateToHome();
 }
 
-// ==========================================================================
-// MODAL QUICK-VIEW CON SELECTOR DE PRENDAS PARA CONJUNTOS
-// ==========================================================================
+// QUICK-VIEW PDP MODAL
 function openPdpModal(id) {
     playTap();
     const item = PRODUCTS.find(p => p.id === id);
@@ -337,7 +351,6 @@ function openPdpModal(id) {
     descEl.innerText = item.descripcion || '';
     descEl.style.display = item.descripcion ? 'block' : 'none';
 
-    // Colores
     const colorsBlock = document.getElementById('pdpColorsBlock');
     const colorsList = document.getElementById('pdpColorsList');
     if (item.colores && item.colores.length > 0) {
@@ -352,18 +365,17 @@ function openPdpModal(id) {
         colorsBlock.style.display = 'none';
     }
 
-    // Talles
     document.getElementById('pdpSizeGrid').innerHTML = item.talles.map((t, idx) => `
         <button class="size-chip ${idx === 0 ? 'selected' : ''}" onclick="selectSizeChip(this, '${t}')">${t}</button>
     `).join('');
 
-    // Si es conjunto con 2 prendas, agregamos selector en el modal
     renderComboItemSelector(item);
     updatePdpPrices(item);
     updatePdpWppLink();
 
     document.getElementById('globalBackdrop').classList.add('open');
     document.getElementById('pdpModal').classList.add('open');
+    pushHistoryState('pdpModal');
 }
 
 function renderComboItemSelector(item) {
@@ -560,11 +572,33 @@ function renderBagDrawer() {
     `;
 }
 
-function openBagDrawer() { playTap(); renderBagDrawer(); document.getElementById('globalBackdrop').classList.add('open'); document.getElementById('bagDrawer').classList.add('open'); }
-function openMenuDrawer() { playTap(); document.getElementById('globalBackdrop').classList.add('open'); document.getElementById('menuDrawer').classList.add('open'); }
+function openBagDrawer() {
+    playTap();
+    renderBagDrawer();
+    document.getElementById('globalBackdrop').classList.add('open');
+    document.getElementById('bagDrawer').classList.add('open');
+    pushHistoryState('bagDrawer');
+}
+
+function openMenuDrawer() {
+    playTap();
+    document.getElementById('globalBackdrop').classList.add('open');
+    document.getElementById('menuDrawer').classList.add('open');
+    pushHistoryState('menuDrawer');
+}
+
 function closeAllOverlays() {
     document.getElementById('globalBackdrop').classList.remove('open');
     document.getElementById('pdpModal').classList.remove('open');
+    document.getElementById('bagDrawer').classList.remove('open');
+    document.getElementById('menuDrawer').classList.remove('open');
+    modalStateStack = [];
+}
+
+function closeOverlayWithoutHistory(modalId) {
+    document.getElementById('globalBackdrop').classList.remove('open');
+    const el = document.getElementById(modalId);
+    if (el) el.classList.remove('open');
     document.getElementById('bagDrawer').classList.remove('open');
     document.getElementById('menuDrawer').classList.remove('open');
 }
